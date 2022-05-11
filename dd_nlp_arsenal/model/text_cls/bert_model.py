@@ -98,6 +98,46 @@ class BertAttClsModel(BasicModel):
             dim=0,
         )
         return self.cls(logits)
+
+
+class BertAttMeanClsModel(BasicModel):
+    def __init__(self, config):
+        super().__init__()
+
+        model_config = AutoConfig.from_pretrained(config.bert_pretrained_name)
+        self.bert = AutoModel.from_pretrained(config.bert_pretrained_name, config=model_config)
+        embedding_dim = self.bert.config.to_dict()['hidden_size']
+        self.linear = nn.Linear(embedding_dim, config.n_classes)
+        self._init_weights([self.linear], initializer_range=0.02)
+
+    @staticmethod
+    def _init_weights(blocks, **kwargs):
+        """
+        参数初始化，将 Linear / Embedding / LayerNorm 与 Bert 进行一样的初始化
+        """
+        for block in blocks:
+            for module in block.modules():
+                if isinstance(module, nn.Linear):
+                    if module.bias is not None:
+                        nn.init.zeros_(module.bias)
+                elif isinstance(module, nn.Embedding):
+                    nn.init.normal_(module.weight, mean=0, std=kwargs.pop('initializer_range', 0.02))
+                elif isinstance(module, nn.LayerNorm):
+                    nn.init.ones_(module.weight)
+                    nn.init.zeros_(module.bias)
+
+    def forward(self, input_ids, attention_mask):
+        outputs = self.bert(input_ids, attention_mask)
+        last_hidden_state = outputs[0]
+        input_mask_expanded = attention_mask.unsqueeze(-1).expand(last_hidden_state.size()).float()
+        sum_embeddings = torch.sum(last_hidden_state * input_mask_expanded, 1)
+        sum_mask = input_mask_expanded.sum(1)
+        sum_mask = torch.clamp(sum_mask, min=1e-9)
+        mean_embeddings = sum_embeddings / sum_mask
+        logits = self.linear(mean_embeddings)
+        return logits
+
+
 if __name__ == '__main__':
     class Config():
         random_seed = 2022
