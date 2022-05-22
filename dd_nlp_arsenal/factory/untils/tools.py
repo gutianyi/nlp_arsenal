@@ -157,16 +157,19 @@ def set_logger(save=False, log_path=None):
         os.makedirs(os.path.dirname(log_path))
 
 
+    if not logger.handlers:
+        # Logging to console
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(logging.Formatter('%(message)s'))
+        logger.addHandler(stream_handler)
     if save:
         # Logging to a file
         file_handler = logging.FileHandler(log_path)
         file_handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
         logger.addHandler(file_handler)
 
-    # Logging to console
-    stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(logging.Formatter('%(message)s'))
-    logger.addHandler(stream_handler)
+        return logger, file_handler
+    return None, None
 
 
 def save_checkpoint(state, is_best, checkpoint):

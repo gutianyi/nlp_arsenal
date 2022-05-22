@@ -45,8 +45,24 @@ class BaseTask(object):
         self.ema = EMA(self.model.parameters(), decay=config.ema_decay) if config.ema_decay else None
 
         # Set the logger
-        set_logger(save=True, log_path=os.path.join(config.params_path, 'train.log'))
+        try:
+            if not config.save_log:
+                config.save_log = True
+        except:
+            config.save_log = True
+
+        self.logger, self.file_handler = set_logger(save=config.save_log, log_path=os.path.join(config.params_path, 'train.log'))
         logging.info(f"Model type: {config.pre_model_type}")
         logging.info("device: {}".format(self.device))
 
         logging.info('Init pre-train model...')
+
+        config_str = '\nconfig is:\n'
+        for item in dir(config):
+            if "__" not in item:
+                config_str += f"{item} = {config.__getattribute__(item)}\n"
+        logging.info(config_str)
+
+    def end_task(self, config):
+        if config.save_log:
+            self.logger.removeHandler(self.file_handler)

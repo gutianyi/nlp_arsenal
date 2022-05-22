@@ -24,7 +24,8 @@ class NezhaClsModel(BasicModel):
         self.n_classes = config.n_classes
         # self.bert = NeZhaModel(config)
         self.bert = NeZhaModel.from_pretrained(config.bert_pretrained_name)
-        self.classifier = nn.Linear(config.hidden_size, self.n_classes)
+        embedding_dim = self.bert.config.to_dict()['hidden_size']
+        self.classifier = nn.Linear(embedding_dim, self.n_classes)
 
     def forward(self, input_ids=None, attention_mask=None, token_type_ids=None, labels=None):
         # attention_mask = torch.ne(input_ids, 0)  #todo

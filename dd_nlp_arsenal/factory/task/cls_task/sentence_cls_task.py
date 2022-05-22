@@ -8,6 +8,7 @@
    desc:
 -------------------------------------------------
 """
+import logging
 
 from tqdm import tqdm
 from tqdm import trange
@@ -23,7 +24,7 @@ from transformers import get_linear_schedule_with_warmup
 from dd_nlp_arsenal.factory.task.base_task import *
 from dd_nlp_arsenal.factory.untils.tools import split_dataset
 from dd_nlp_arsenal.factory.untils.cus_loss import focal_loss, compute_kl_loss
-from dd_nlp_arsenal.factory.untils.attack import FGM, PGD
+from dd_nlp_arsenal.factory.untils.attack import FGM, PGD, AWP
 
 
 class SentenceCLSTask(BaseTask):
@@ -77,6 +78,8 @@ class SentenceCLSTask(BaseTask):
             attack_func = FGM(self.model)
         elif config.attack_func == 'pgd':
             attack_func = PGD(self.model)
+        elif config.attack_func == 'awp':
+            attack_func = AWP(self.model)
         else:
             attack_func = None
 
@@ -114,6 +117,8 @@ class SentenceCLSTask(BaseTask):
             if self.ema is not None:
                 self.ema.restore(self.model.parameters())
 
+        self.end_task(config)
+
     def _train_epoch(self, model, data_loader, attack_func, config):
         model = model.train()
         losses = []
@@ -140,7 +145,7 @@ class SentenceCLSTask(BaseTask):
                 )
                 # cross entropy loss for classifier
                 ce_loss = 0.5 * (self.loss_func(outputs, targets) + self.loss_func(outputs2, targets))
-                kl_loss = compute_kl_loss(outputs, outputs2)
+                kl_loss = compute_kl_loss(outputs, outputs2, is_mean=config.rdrop_ismean)
                 # carefully choose hyper-parameters
                 loss = ce_loss + config.alpha * kl_loss
             else:
@@ -163,7 +168,7 @@ class SentenceCLSTask(BaseTask):
                                                 attention_mask=attention_mask), targets)
                 loss_adv.backward()  # 反向传播，并在正常的grad基础上，累加对抗训练的梯度
                 attack_func.restore()  # 恢复embedding参数
-            elif config.attack_func == 'pgd':
+            elif config.attack_func == 'pgd' or config.attack_func == 'awp':
                 attack_func.backup_grad()
                 # 对抗训练
                 for t in range(config.pgd_k):

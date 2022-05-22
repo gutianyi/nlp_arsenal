@@ -140,7 +140,7 @@ def compute_kl_loss(p, q, pad_mask=None):
     loss = (p_loss + q_loss) / 2
     return loss
 
-def compute_kl_loss(p, q, pad_mask=None):
+def compute_kl_loss(p, q, pad_mask=None, is_mean=False):
     """
     R-Drop for classification tasks.
     """
@@ -153,8 +153,12 @@ def compute_kl_loss(p, q, pad_mask=None):
         q_loss.masked_fill_(pad_mask, 0.)
 
     # You can choose whether to use function "sum" and "mean" depending on your task
-    p_loss = p_loss.sum()
-    q_loss = q_loss.sum()
+    if is_mean:
+        p_loss = p_loss.mean()
+        q_loss = q_loss.mean()
+    else:
+        p_loss = p_loss.sum()
+        q_loss = q_loss.sum()
 
     loss = (p_loss + q_loss) / 2
     return loss
