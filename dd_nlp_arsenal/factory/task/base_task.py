@@ -9,8 +9,8 @@
 -------------------------------------------------
 """
 import torch.cuda
-from dd_nlp_arsenal.factory.untils.ema import EMA
-from dd_nlp_arsenal.factory.untils.tools import seed_torch, set_logger
+from dd_nlp_arsenal.factory.utils.ema import EMA
+from dd_nlp_arsenal.factory.utils.tools import seed_torch, set_logger
 
 import os
 import logging

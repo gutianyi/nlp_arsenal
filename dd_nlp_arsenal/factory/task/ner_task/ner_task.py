@@ -21,9 +21,9 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from transformers import get_linear_schedule_with_warmup
 
 from dd_nlp_arsenal.factory.task.base_task import *
-from dd_nlp_arsenal.factory.untils.tools import split_dataset
-from dd_nlp_arsenal.factory.untils.cus_loss import focal_loss, compute_kl_loss
-from dd_nlp_arsenal.factory.untils.attack import FGM, PGD
+from dd_nlp_arsenal.factory.utils.tools import split_dataset
+from dd_nlp_arsenal.factory.utils.cus_loss import focal_loss, compute_kl_loss
+from dd_nlp_arsenal.factory.utils.attack import FGM, PGD
 
 def global_pointer_f1_score(y_true, y_pred):
     y_pred = torch.gt(y_pred, 0)

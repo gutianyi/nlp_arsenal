@@ -11,7 +11,7 @@
 from dd_nlp_arsenal.nn.nezha.modeling import NeZhaModel
 from dd_nlp_arsenal.nn.base.basemodel import BasicModel
 from dd_nlp_arsenal.nn.layer.global_pointer_block import GlobalPointer
-from dd_nlp_arsenal.factory.untils.tools import initial_parameter
+from dd_nlp_arsenal.factory.utils.tools import initial_parameter
 
 class GlobalPointerNezha(BasicModel):
     """

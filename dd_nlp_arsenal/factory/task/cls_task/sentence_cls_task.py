@@ -22,9 +22,9 @@ from torch.utils.data import DataLoader
 from transformers import get_linear_schedule_with_warmup
 
 from dd_nlp_arsenal.factory.task.base_task import *
-from dd_nlp_arsenal.factory.untils.tools import split_dataset
-from dd_nlp_arsenal.factory.untils.cus_loss import focal_loss, compute_kl_loss
-from dd_nlp_arsenal.factory.untils.attack import FGM, PGD, AWP
+from dd_nlp_arsenal.factory.utils.tools import split_dataset
+from dd_nlp_arsenal.factory.utils.cus_loss import focal_loss, compute_kl_loss
+from dd_nlp_arsenal.factory.utils.attack import FGM, PGD, AWP
 
 
 class SentenceCLSTask(BaseTask):
@@ -97,10 +97,16 @@ class SentenceCLSTask(BaseTask):
                 if epoch + 1 >= config.min_store_epoch:
                     if val_f1 > best_f1:
                         logging.info(f'saving best_model_state val loss is {val_loss}...')
+                        # eval前，进行ema的权重替换；eval之后，恢复原来模型的参数
+                        self.ema.store(self.model.parameters())
+                        self.ema.copy_to(self.model.parameters())
+
                         if config.trained_model_path is not None:
                             self.model.save(name=config.trained_model_path)
                         else:
                             self.model.save()
+                        if self.ema is not None:
+                            self.ema.restore(self.model.parameters())
                         best_f1 = val_f1
             else:
                 logging.info(f'saving best_model_state val loss is {train_loss}...')
@@ -114,8 +120,8 @@ class SentenceCLSTask(BaseTask):
                 else:
                     self.model.save()
 
-            if self.ema is not None:
-                self.ema.restore(self.model.parameters())
+                if self.ema is not None:
+                    self.ema.restore(self.model.parameters())
 
         self.end_task(config)
 
