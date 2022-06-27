@@ -234,3 +234,51 @@ def get_default_bert_optimizer(
                       correct_bias=correct_bias,
                       weight_decay=weight_decay)
     return optimizer
+
+def get_floor_decay_parameters(args, model,
+                   eps: float = 1e-6,
+                   correct_bias: bool = True,
+                   weight_decay: float = 1e-3):
+    parameters = []
+    no_decay = ["bias", "LayerNorm.weight"]
+    lr = args.bert_learning_rate
+    for layer in range(12, -1, -1):
+        layer_params = [
+            {
+                'params': [p for n, p in model.named_parameters() if
+                           not any(nd in n for nd in no_decay) and f'encoder.layer.{layer}.' in n],
+                "weight_decay": weight_decay,
+                'lr': lr
+            },
+            {
+                'params': [p for n, p in model.named_parameters() if
+                           any(nd in n for nd in no_decay) and f'encoder.layer.{layer}.' in n],
+                "weight_decay": 0.0,
+                'lr': lr
+            }]
+        parameters.extend(layer_params)
+        lr *= 0.95
+    classifier_params = [
+        {
+            'params': [p for n, p in model.named_parameters() if
+                       not any(nd in n for nd in no_decay) and 'encoder.layer' not in n],
+            "weight_decay": weight_decay,
+            'lr': args.learning_rate
+        },
+        {
+            'params': [p for n, p in model.named_parameters() if
+                       any(nd in n for nd in no_decay) and 'encoder.layer' not in n],
+            "weight_decay": 0.0,
+            'lr': args.learning_rate
+        }
+    ]
+    parameters.extend(classifier_params)
+
+    optimizer = AdamW(parameters,
+                      eps=eps,
+                      correct_bias=correct_bias,
+                      weight_decay=weight_decay)
+
+    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps,
+                                                num_training_steps=args.max_steps)
+    return optimizer, scheduler

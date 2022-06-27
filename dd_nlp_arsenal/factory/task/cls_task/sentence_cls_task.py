@@ -22,10 +22,12 @@ from torch.utils.data import DataLoader
 from transformers import get_linear_schedule_with_warmup
 
 from dd_nlp_arsenal.factory.task.base_task import *
-from dd_nlp_arsenal.factory.utils.tools import split_dataset
-from dd_nlp_arsenal.factory.utils.cus_loss import focal_loss, compute_kl_loss
-from dd_nlp_arsenal.factory.utils.attack import FGM, PGD, AWP
+from dd_nlp_arsenal.factory.untils.tools import split_dataset
+from dd_nlp_arsenal.factory.untils.cus_loss import focal_loss, compute_kl_loss
+from dd_nlp_arsenal.factory.untils.attack import FGM, PGD, AWP
 
+METRICS_MAP = {'acc': accuracy_score,
+               'f1': f1_score}
 
 class SentenceCLSTask(BaseTask):
     """
@@ -88,25 +90,19 @@ class SentenceCLSTask(BaseTask):
             logging.info(f'Epoch {epoch + 1}/{config.n_epoch}')
             logging.info('-' * 10)
             train_loss, train_f1 = self._train_epoch(self.model, train_loader, attack_func, config)
-            logging.info(f'Train loss {train_loss} train f1_score {train_f1}')
+            logging.info(f'Train loss {train_loss} train {config.metrics} {train_f1}')
 
             if not is_full_data:
                 val_loss, val_f1 = self._eval_model(self.model, val_loader, config)
-                logging.info(f'Val   loss {val_loss}  f1_score {val_f1}')
+                logging.info(f'Val   loss {val_loss}  {config.metrics} {val_f1}')
 
                 if epoch + 1 >= config.min_store_epoch:
                     if val_f1 > best_f1:
                         logging.info(f'saving best_model_state val loss is {val_loss}...')
-                        # eval前，进行ema的权重替换；eval之后，恢复原来模型的参数
-                        self.ema.store(self.model.parameters())
-                        self.ema.copy_to(self.model.parameters())
-
                         if config.trained_model_path is not None:
                             self.model.save(name=config.trained_model_path)
                         else:
                             self.model.save()
-                        if self.ema is not None:
-                            self.ema.restore(self.model.parameters())
                         best_f1 = val_f1
             else:
                 logging.info(f'saving best_model_state val loss is {train_loss}...')
@@ -120,8 +116,8 @@ class SentenceCLSTask(BaseTask):
                 else:
                     self.model.save()
 
-                if self.ema is not None:
-                    self.ema.restore(self.model.parameters())
+            if self.ema is not None:
+                self.ema.restore(self.model.parameters())
 
         self.end_task(config)
 
@@ -209,8 +205,10 @@ class SentenceCLSTask(BaseTask):
 
         predictions = torch.stack(predictions).cpu()
         real_values = torch.stack(real_values).cpu()
+        
+        metrics_out = METRICS_MAP[config.metrics](real_values, predictions, average='macro') if config.metrics != 'acc' else  METRICS_MAP[config.metrics](real_values, predictions)
 
-        return np.mean(losses), f1_score(real_values, predictions, average='macro')
+        return np.mean(losses), metrics_out
 
     def _eval_model(self, model, data_loader, config):
         model = model.eval()  # 验证预测模式
@@ -249,4 +247,6 @@ class SentenceCLSTask(BaseTask):
         predictions = torch.stack(predictions).cpu()
         real_values = torch.stack(real_values).cpu()
 
-        return np.mean(losses), f1_score(real_values, predictions, average='macro')
+        metrics_out = METRICS_MAP[config.metrics](real_values, predictions, average='macro') if config.metrics != 'acc' else  METRICS_MAP[config.metrics](real_values, predictions)
+
+        return np.mean(losses), metrics_out
