@@ -43,7 +43,6 @@ class Config:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.n_gpu = torch.cuda.device_count()
         # 标签列表
-        self.tags.extend(["<START_TAG>", "<END_TAG>"])
 
         # 读取保存的data
         self.data_cache = True
