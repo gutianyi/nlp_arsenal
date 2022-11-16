@@ -54,7 +54,7 @@ class GlobalPointerNezha(BasicModel):
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
         )
-        print('encoder_out',encoder_out.shape)
+        # print('encoder_out',encoder_out.shape)
         logits = self.global_pointer(encoder_out, mask=attention_mask)
 
         return logits
