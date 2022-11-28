@@ -35,6 +35,7 @@ class SentenceCLSTask(BaseTask):
     """
 
     def __init__(self, *args, **kwargs):
+        self.epoch = -1
         super(SentenceCLSTask, self).__init__(*args, **kwargs)
 
     def fit(self, train_data, config, val_data=None, is_full_data=False):
@@ -87,6 +88,7 @@ class SentenceCLSTask(BaseTask):
 
         best_f1 = float('-inf')
         for epoch in range(config.n_epoch):
+            self.epoch = epoch
             logging.info(f'Epoch {epoch + 1}/{config.n_epoch}')
             logging.info('-' * 10)
             train_loss, train_f1 = self._train_epoch(self.model, train_loader, attack_func, config)
@@ -239,7 +241,8 @@ class SentenceCLSTask(BaseTask):
                 real_values.extend(targets)
 
         if config.is_use_swa:
-            self.optimizer.swap_swa_sgd()
+            if self.epoch+1 != config.n_epoch:
+                self.optimizer.swap_swa_sgd()
 
         if self.ema is not None:
             self.ema.restore(self.model.parameters())
