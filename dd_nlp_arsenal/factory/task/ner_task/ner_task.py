@@ -91,6 +91,7 @@ class GlobalPointerNERTask(BaseTask):
             attack_func = None
 
         best_f1 = float('-inf')
+        best_train_loss = float('inf')
         for epoch in range(config.n_epoch):
             self.epoch = epoch
             logging.info(f'Epoch {epoch + 1}/{config.n_epoch}')
@@ -111,19 +112,21 @@ class GlobalPointerNERTask(BaseTask):
                             self.model.save()
                         best_f1 = val_f1
             else:
-                logging.info(f'saving best_model_state val loss is {train_loss}...')
-                if self.ema is not None:
-                    # eval前，进行ema的权重替换；eval之后，恢复原来模型的参数
-                    self.ema.store(self.model.parameters())
-                    self.ema.copy_to(self.model.parameters())
+                if train_loss < best_train_loss:
+                    if self.ema is not None:
+                        # eval前，进行ema的权重替换；eval之后，恢复原来模型的参数
+                        self.ema.store(self.model.parameters())
+                        self.ema.copy_to(self.model.parameters())
 
-                if config.trained_model_path is not None:
-                    self.model.save(name=config.trained_model_path)
-                else:
-                    self.model.save()
+                    logging.info(f'saving best_model_state train loss is {train_loss}...')
+                    if config.trained_model_path is not None:
+                        self.model.save(name=config.trained_model_path)
+                    else:
+                        self.model.save()
+                    best_train_loss = train_loss
 
-            if self.ema is not None:
-                self.ema.restore(self.model.parameters())
+                    if self.ema is not None:
+                        self.ema.restore(self.model.parameters())
 
 
     def _train_epoch(self, model, data_loader, attack_func, config):
